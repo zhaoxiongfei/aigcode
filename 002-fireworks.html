@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>绚丽烟花效果</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// 设置画布尺寸为窗口大小
+function setCanvasSize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+setCanvasSize();
+window.addEventListener('resize', setCanvasSize);
+
+// 烟花粒子类
+class Particle {
+    constructor(x, y, colors) {
+        this.x = x;
+        this.y = y;
+        this.colors = colors;  // 接收颜色数组
+        this.velocity = {
+            x: (Math.random() - 0.5) * 20,
+            y: (Math.random() - 0.5) * 20
+        };
+        this.alpha = 1;
+        this.friction = 0.97;
+        this.gravity = 0.15;
+        this.life = 200;
+        this.size = Math.random() * 5 + 2;
+        this.brightness = Math.random() * 50 + 50;
+        // 增加亮度变化
+        this.colorIndex = Math.floor(Math.random() * colors.length);
+        this.color = colors[this.colorIndex];
+    }
+
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+
+        // 创建径向渐变
+        const gradient = ctx.createRadialGradient(
+            this.x, this.y, 0,
+            this.x, this.y, this.size
+        );
+
+        // 使用随机选择的颜色
+        gradient.addColorStop(0, this.color);
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        ctx.restore();
+    }
+
+    update() {
+        this.velocity.x *= this.friction;
+        this.velocity.y *= this.friction;
+        this.velocity.y += this.gravity;
+        this.x += this.velocity.x;
+        this.y += this.velocity.y;
+
+        // 优化淡出效果
+        if (this.life > 50) {
+            this.alpha = 1;
+        } else {
+            this.alpha = (this.life / 50) * 0.8;
+        }
+
+        // 粒子大小随生命周期变化
+        if (this.size > 0.2) {
+            this.size -= 0.1;
+        }
+
+        this.life--;
+    }
+}
+
+// 烟花类
+class Firework {
+    constructor(x, y, targetX, targetY) {
+        this.x = x;
+        this.y = y;
+        this.targetX = targetX;
+        this.targetY = targetY;
+        this.distance = Math.sqrt(
+            Math.pow(targetX - x, 2) + Math.pow(targetY - y, 2)
+        );
+        this.angle = Math.atan2(targetY - y, targetX - x);
+        this.velocity = {
+            x: Math.cos(this.angle) * 15,
+            y: Math.sin(this.angle) * 15
+        };
+        this.particles = [];
+        this.alive = true;
+        this.colors = getRandomColors();
+    }
+
+    draw() {
+        if (this.alive) {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+            ctx.fillStyle = this.colors[0];
+            ctx.fill();
+        }
+
+        for (let particle of this.particles) {
+            particle.draw();
+        }
+    }
+
+    update() {
+        if (this.alive) {
+            this.x += this.velocity.x;
+            this.y += this.velocity.y;
+
+            const distanceTraveled = Math.sqrt(
+                Math.pow(this.x - (this.targetX - this.velocity.x * 5), 2) +
+                Math.pow(this.y - (this.targetY - this.velocity.y * 5), 2)
+            );
+
+            if (distanceTraveled < 10) {
+                this.explode();
+                this.alive = false;
+            }
+        }
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            this.particles[i].update();
+            if (this.particles[i].alpha <= 0 || this.particles[i].life <= 0) {
+                this.particles.splice(i, 1);
+            }
+        }
+    }
+
+    explode() {
+        const particleCount = 180;  // 增加粒子数量
+        for (let i = 0; i < particleCount; i++) {
+            this.particles.push(new Particle(this.x, this.y, this.colors));
+        }
+    }
+}
+
+// 颜色主题
+function getRandomColors() {
+    const colorSets = [
+        // 红色系
+        ['#ff0000', '#ff6b6b', '#ff4141', '#ff9999', '#ffcdd2'],
+        // 蓝色系
+        ['#0000ff', '#4169e1', '#1e90ff', '#87ceeb', '#b0e0e6'],
+        // 绿色系
+        ['#00ff00', '#32cd32', '#98fb98', '#90ee90', '#3cb371'],
+        // 金色系
+        ['#ffd700', '#daa520', '#ffc125', '#ffb90f', '#eec900'],
+        // 紫色系
+        ['#9400d3', '#9370db', '#ba55d3', '#e6e6fa', '#dda0dd'],
+        // 粉色系
+        ['#ff69b4', '#ffb6c1', '#ffc0cb', '#ff82ab', '#ff8faf'],
+        // 青色系
+        ['#00ffff', '#48d1cc', '#40e0d0', '#7fffd4', '#66cdaa'],
+        // 彩虹系
+        ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#9400d3'],
+        // 白金系
+        ['#ffffff', '#fafad2', '#fffacd', '#fff8dc', '#ffebcd']
+    ];
+
+    // 随机选择三个不同的色系并合并
+    const selectedSets = [];
+    const usedIndices = new Set();
+
+    while (selectedSets.length < 3) {
+        const randomIndex = Math.floor(Math.random() * colorSets.length);
+        if (!usedIndices.has(randomIndex)) {
+            usedIndices.add(randomIndex);
+            selectedSets.push(colorSets[randomIndex]);
+        }
+    }
+
+    // 从每个选中的色系中随机选择2个颜色
+    const mixedColors = [];
+    selectedSets.forEach(set => {
+        const shuffled = [...set].sort(() => Math.random() - 0.5);
+        mixedColors.push(...shuffled.slice(0, 2));
+    });
+
+    return mixedColors;
+}
+
+// 存储所有烟花
+const fireworks = [];
+
+// 自动发射烟花
+function autoLaunchFirework() {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height * 0.5;
+    fireworks.push(new Firework(
+        Math.random() * canvas.width,
+        canvas.height,
+        x,
+        y
+    ));
+}
+
+// 点击发射烟花
+canvas.addEventListener('click', (e) => {
+    fireworks.push(new Firework(
+        Math.random() * canvas.width,
+        canvas.height,
+        e.clientX,
+        e.clientY
+    ));
+});
+
+// 动画循环
+function animate() {
+    // 增加透明度使拖尾效果更明显
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 随机发射烟花
+    if (Math.random() < 0.05) {
+        autoLaunchFirework();
+    }
+
+    // 更新和绘制所有烟花
+    for (let i = fireworks.length - 1; i >= 0; i--) {
+        fireworks[i].update();
+        fireworks[i].draw();
+
+        // 移除已经消失的烟花
+        if (!fireworks[i].alive && fireworks[i].particles.length === 0) {
+            fireworks.splice(i, 1);
+        }
+    }
+
+    requestAnimationFrame(animate);
+}
+
+// 开始动画
+animate();
+</script>
+</body>
+</html>
