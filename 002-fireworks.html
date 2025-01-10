@@ -15,6 +15,10 @@
 </head>
 <body>
 <canvas id="canvas"></canvas>
+<!-- 添加音频元素 -->
+<audio id="launchSound" src="launch.wav" preload="auto"></audio>
+<audio id="explosionSound" src="explosion.flac" preload="auto"></audio>
+<audio id="bgMusic" src="background.mp3" preload="auto" loop></audio>
 
 <script>
 const canvas = document.getElementById('canvas');
@@ -111,6 +115,12 @@ class Firework {
         this.particles = [];
         this.alive = true;
         this.colors = getRandomColors();
+
+                // 添加发射音效
+        const launchSound = document.getElementById('launchSound');
+        launchSound.currentTime = 0;
+        launchSound.volume = 0.3;  // 调整音量
+        launchSound.play().catch(e => console.log('播放发射音效失败:', e));
     }
 
     draw() {
@@ -155,6 +165,12 @@ class Firework {
         for (let i = 0; i < particleCount; i++) {
             this.particles.push(new Particle(this.x, this.y, this.colors));
         }
+
+        // 添加爆炸音效
+        const explosionSound = document.getElementById('explosionSound');
+        explosionSound.currentTime = 0;
+        explosionSound.volume = 0.4;  // 调整音量
+        explosionSound.play().catch(e => console.log('播放爆炸音效失败:', e));
     }
 }
 
@@ -253,8 +269,23 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
+// 添加背景音乐控制
+function initBackgroundMusic() {
+    const bgMusic = document.getElementById('bgMusic');
+    bgMusic.volume = 0.8;  // 设置背景音乐音量
+
+    // 添加点击事件来开始播放背景音乐
+    document.addEventListener('click', () => {
+        bgMusic.play().catch(e => console.log('播放背景音乐失败:', e));
+    }, { once: true });  // once: true 确保事件只触发一次
+}
+
+// 在动画开始前初始化背景音乐
+initBackgroundMusic();
+
 // 开始动画
 animate();
+
 </script>
 </body>
 </html>
